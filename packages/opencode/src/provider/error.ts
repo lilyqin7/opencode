@@ -109,41 +109,50 @@ export function parseStreamError(input: unknown): ParsedStreamError | undefined 
 
   switch (body?.error?.code) {
     case "context_length_exceeded":
-      return {
+      result = {
         type: "context_overflow",
         message: "Input exceeds context window of this model",
         responseBody,
       }
     case "insufficient_quota":
-      return {
+      result = {
         type: "api_error",
         message: "Quota exceeded. Check your plan and billing details.",
         isRetryable: false,
         responseBody,
       }
+      break
+
     case "usage_not_included":
-      return {
+      result = {
         type: "api_error",
         message: "To use Codex with your ChatGPT plan, upgrade to Plus: https://chatgpt.com/explore/plus.",
         isRetryable: false,
         responseBody,
       }
+      break
+
     case "invalid_prompt":
-      return {
+      result = {
         type: "api_error",
         message: typeof body?.error?.message === "string" ? body?.error?.message : "Invalid prompt.",
         isRetryable: false,
         responseBody,
       }
+      break
+
     case "server_is_overloaded":
     case "server_error":
-      return {
+      result = {
         type: "api_error",
         message: typeof body?.error?.message === "string" ? body?.error?.message : "Server error.",
         isRetryable: true,
         responseBody,
       }
+      break
   }
+
+  return result
 }
 
 export type ParsedAPICallError =
