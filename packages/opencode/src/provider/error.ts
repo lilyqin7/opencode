@@ -52,7 +52,7 @@ function message(providerID: ProviderV2.ID, e: APICallError) {
       if (errMsg && typeof errMsg === "string") {
         return `${msg}: ${errMsg}`
       }
-    } catch {}
+    } catch { }
 
     // If responseBody is HTML (e.g. from a gateway or proxy error page),
     // provide a human-readable message instead of dumping raw markup
@@ -88,16 +88,16 @@ function json(input: unknown) {
 
 export type ParsedStreamError =
   | {
-      type: "context_overflow"
-      message: string
-      responseBody: string
-    }
+    type: "context_overflow"
+    message: string
+    responseBody: string
+  }
   | {
-      type: "api_error"
-      message: string
-      isRetryable: boolean
-      responseBody: string
-    }
+    type: "api_error"
+    message: string
+    isRetryable: boolean
+    responseBody: string
+  }
 
 export function parseStreamError(input: unknown): ParsedStreamError | undefined {
   const raw = json(input)
@@ -107,60 +107,73 @@ export function parseStreamError(input: unknown): ParsedStreamError | undefined 
   const responseBody = JSON.stringify(body)
   if (body.type !== "error") return
 
+  let result: ParsedStreamError | undefined
+
   switch (body?.error?.code) {
     case "context_length_exceeded":
-      return {
+      result = {
         type: "context_overflow",
         message: "Input exceeds context window of this model",
         responseBody,
       }
+      break
+
     case "insufficient_quota":
-      return {
+      result = {
         type: "api_error",
         message: "Quota exceeded. Check your plan and billing details.",
         isRetryable: false,
         responseBody,
       }
+      break
+
     case "usage_not_included":
-      return {
+      result = {
         type: "api_error",
         message: "To use Codex with your ChatGPT plan, upgrade to Plus: https://chatgpt.com/explore/plus.",
         isRetryable: false,
         responseBody,
       }
+      break
+
     case "invalid_prompt":
-      return {
+      result = {
         type: "api_error",
         message: typeof body?.error?.message === "string" ? body?.error?.message : "Invalid prompt.",
         isRetryable: false,
         responseBody,
       }
+      break
+
     case "server_is_overloaded":
     case "server_error":
-      return {
+      result = {
         type: "api_error",
         message: typeof body?.error?.message === "string" ? body?.error?.message : "Server error.",
         isRetryable: true,
         responseBody,
       }
+      break
   }
+
+  return result
 }
 
 export type ParsedAPICallError =
   | {
-      type: "context_overflow"
-      message: string
-      responseBody?: string
-    }
+    type: "context_overflow"
+    message: string
+    responseBody?: string
+  }
   | {
-      type: "api_error"
-      message: string
-      statusCode?: number
-      isRetryable: boolean
-      responseHeaders?: Record<string, string>
-      responseBody?: string
-      metadata?: Record<string, string>
-    }
+    type: "api_error"
+    message: string
+    statusCode?: number
+    isRetryable: boolean
+    responseHeaders?: Record<string, string>
+    responseBody?: string
+    metadata?: Record<string, string>
+  }
 
 export function parseAPICallError(input: { providerID: ProviderV2.ID; error: APICallError }): ParsedAPICallError {
   const m = message(input.providerID, input.error)
